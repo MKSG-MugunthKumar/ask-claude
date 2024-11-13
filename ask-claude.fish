@@ -39,9 +39,9 @@ function ask-claude
     set shell_type (fish --version | string split ' ')[1]
     
     # More specific system instruction including OS version
-    set system_instruction "Return commands suitable for copy/pasting into $shell_type shell on $system_detail. For macOS, use version-appropriate commands (e.g., different DNS flush commands for different versions). For Linux, use distribution-appropriate commands. Do NOT include commentary NOR Markdown triple-backtick code blocks as your whole response will be copied into my terminal automatically. The script should do this: $argv"
+    set system_instruction "Return commands suitable for copy/pasting into $shell_type shell on $system_detail. If $system_detail is Linux use distributon appropriate versions. If $system_detail is macOS, use version-appropriate commands. Do not include both. Do NOT include commentary NOR Markdown triple-backtick code blocks as your whole response will be copied into my terminal automatically. As such, your response should be just executable commands."
     
-    set user_prompt $argv
+    set user_prompt (string join " " $argv)
    
 
     # Check if arguments were provided
