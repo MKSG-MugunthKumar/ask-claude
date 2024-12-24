@@ -1,6 +1,6 @@
 function ask-claude
-  
-# Get detailed system information for macOS
+
+    # Get detailed system information for macOS
     if test (uname) = "Darwin"
         set os_type "macOS"
         set macos_version (sw_vers -productVersion)
@@ -92,8 +92,9 @@ function ask-claude
         echo "Model should be something like 'claude-3-sonnet-20240229'"
         return 1
     end
-       
-    set cmd (curl -s \
+
+    # After the curl command, before setting 'cmd':
+    set response (curl -s \
     "https://api.anthropic.com/v1/messages" \
     -H "x-api-key: $CLAUDE_API_KEY" \
     -H "anthropic-version: 2023-06-01" \
@@ -105,7 +106,46 @@ function ask-claude
         \"messages\":[
             {\"role\":\"user\",\"content\":\"$user_prompt\"}
         ]
-    }" | jq -r '.content[0].text')
+    }")
+
+    # Error handling
+    if test (echo $response | jq -r 'has("error")') = "true"
+        set error_type (echo $response | jq -r '.error.type')
+        set error_message (echo $response | jq -r '.error.message')
+        
+        set_color red
+        echo "Error occurred while calling Claude API:"
+        
+        switch $error_type
+            case "invalid_request_error"
+                if string match -q "*credit balance is too low*" $error_message
+                    echo "💰 Insufficient credits in your Anthropic account"
+                    set_color normal
+                    echo "Please visit: https://console.anthropic.com/settings/billing"
+                    echo "to upgrade your plan or purchase additional credits."
+                else
+                    echo "Invalid request: $error_message"
+                end
+            case "rate_limit_error"
+                echo "🕒 Rate limit exceeded. Please wait a moment and try again."
+            case "authentication_error"
+                echo "🔑 Authentication failed. Please check your API key."
+                set_color normal
+                echo "Ensure CLAUDE_API_KEY is set correctly in your config.fish"
+            case "invalid_api_key_error"
+                echo "🔑 Invalid API key format"
+                set_color normal
+                echo "Your API key should start with 'sk-ant-'"
+            case "*"
+                echo "❌ Unknown error: $error_message"
+        end
+        
+        set_color normal
+        return 1
+    end
+
+    # If no error, proceed with parsing the response
+    set cmd (echo $response | jq -r '.messages[0].content')
     
     # Put the command on the command line but don't execute
     commandline $cmd
